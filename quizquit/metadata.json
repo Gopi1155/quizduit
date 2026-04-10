@@ -1,0 +1,5 @@
+{
+  "name": "QuizQuit",
+  "description": "A structured quiz application with 8 subjects, 10 levels, and progressive difficulty rounds (Easy, Medium, Hard). Features leaderboards and Google authentication.",
+  "requestFramePermissions": []
+}

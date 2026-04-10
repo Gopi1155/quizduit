@@ -1,0 +1,98 @@
+{
+  "entities": {
+    "User": {
+      "title": "User",
+      "description": "User profile information",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string" },
+        "username": { "type": "string" },
+        "email": { "type": "string" },
+        "photoURL": { "type": "string" },
+        "totalScore": { "type": "number" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["uid", "username", "email"]
+    },
+    "Subject": {
+      "title": "Subject",
+      "description": "A quiz subject",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string" },
+        "description": { "type": "string" },
+        "icon": { "type": "string" }
+      },
+      "required": ["name"]
+    },
+    "Question": {
+      "title": "Question",
+      "description": "A quiz question",
+      "type": "object",
+      "properties": {
+        "text": { "type": "string" },
+        "options": { "type": "array", "items": { "type": "string" } },
+        "correctAnswer": { "type": "string" },
+        "subjectId": { "type": "string" },
+        "level": { "type": "number" },
+        "round": { "type": "string", "enum": ["Easy", "Medium", "Hard"] }
+      },
+      "required": ["text", "options", "correctAnswer", "subjectId", "level", "round"]
+    },
+    "Result": {
+      "title": "Result",
+      "description": "A student's quiz result for a specific round",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "username": { "type": "string" },
+        "subjectId": { "type": "string" },
+        "subjectName": { "type": "string" },
+        "level": { "type": "number" },
+        "round": { "type": "string", "enum": ["Easy", "Medium", "Hard"] },
+        "score": { "type": "number" },
+        "timestamp": { "type": "string", "format": "date-time" }
+      },
+      "required": ["userId", "subjectId", "level", "round", "score", "timestamp"]
+    },
+    "LeaderboardEntry": {
+      "title": "Leaderboard Entry",
+      "description": "Entry for rankings",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "username": { "type": "string" },
+        "photoURL": { "type": "string" },
+        "score": { "type": "number" },
+        "lastUpdated": { "type": "string", "format": "date-time" }
+      },
+      "required": ["userId", "username", "score", "lastUpdated"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": "User",
+      "description": "User profile documents"
+    },
+    "/subjects/{subjectId}": {
+      "schema": "Subject",
+      "description": "Quiz subjects"
+    },
+    "/questions/{questionId}": {
+      "schema": "Question",
+      "description": "All quiz questions"
+    },
+    "/results/{resultId}": {
+      "schema": "Result",
+      "description": "Quiz attempt results"
+    },
+    "/leaderboards/overall/rankings/{userId}": {
+      "schema": "LeaderboardEntry",
+      "description": "Overall leaderboard"
+    },
+    "/leaderboards/subjects/{subjectId}/rankings/{userId}": {
+      "schema": "LeaderboardEntry",
+      "description": "Subject-specific leaderboard"
+    }
+  }
+}

@@ -1,0 +1,148 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // ===============================================================
+    // Assumed Data Model
+    // ===============================================================
+    //
+    // Collection: users
+    // Document ID: {userId}
+    // Fields:
+    //   - uid: string (required)
+    //   - username: string (required)
+    //   - email: string (required)
+    //   - photoURL: string (optional)
+    //   - totalScore: number (required)
+    //   - createdAt: timestamp (required)
+    //
+    // Collection: subjects
+    // Document ID: {subjectId}
+    // Fields:
+    //   - name: string (required)
+    //   - description: string (optional)
+    //   - icon: string (optional)
+    //
+    // Collection: questions
+    // Document ID: {questionId}
+    // Fields:
+    //   - text: string (required)
+    //   - options: list (required)
+    //   - correctAnswer: string (required)
+    //   - subjectId: string (required)
+    //   - level: number (required)
+    //   - round: number (required, enum: 1, 2, 3)
+    //
+    // Collection: results
+    // Document ID: {resultId}
+    // Fields:
+    //   - userId: string (required)
+    //   - username: string (required)
+    //   - subjectId: string (required)
+    //   - subjectName: string (required)
+    //   - level: number (required)
+    //   - round: number (required)
+    //   - score: number (required)
+    //   - timestamp: timestamp (required)
+    //
+    // Collection: leaderboards
+    // Path: /leaderboards/{type}/rankings/{userId}
+    // Fields:
+    //   - userId: string (required)
+    //   - username: string (required)
+    //   - photoURL: string (optional)
+    //   - score: number (required)
+    //   - lastUpdated: timestamp (required)
+    //
+    // ===============================================================
+
+    // ===============================================================
+    // Helper Functions
+    // ===============================================================
+
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+
+    function isAdmin() {
+      return isAuthenticated() &&
+        (get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin' ||
+          (request.auth.token.email == "gopichnadunukala@gmail.com" && request.auth.token.email_verified == true));
+    }
+
+    function isValidUser(data) {
+      return data.keys().hasAll(['uid', 'username', 'email', 'totalScore', 'createdAt']) &&
+             data.uid is string && data.uid == request.auth.uid &&
+             data.username is string && data.username.size() > 0 && data.username.size() < 50 &&
+             data.email is string && data.email.matches("^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$") &&
+             data.totalScore is number && data.totalScore >= 0 &&
+             data.createdAt is timestamp &&
+             (!('photoURL' in data) || data.photoURL is string || data.photoURL == null) &&
+             (!('progress' in data) || data.progress is map);
+    }
+
+    function isValidResult(data) {
+      return data.keys().hasAll(['userId', 'username', 'subjectId', 'subjectName', 'level', 'round', 'score', 'timestamp']) &&
+             data.userId == request.auth.uid &&
+             data.username is string &&
+             data.subjectId is string &&
+             data.subjectName is string &&
+             data.level is number && data.level >= 1 && data.level <= 10 &&
+             data.round is number && data.round >= 1 && data.round <= 3 &&
+             data.score is number && data.score >= 0 && data.score <= 10 &&
+             data.timestamp is timestamp;
+    }
+
+    function isValidLeaderboardEntry(data) {
+      return data.keys().hasAll(['userId', 'username', 'score', 'lastUpdated']) &&
+             data.userId == request.auth.uid &&
+             data.username is string &&
+             data.score is number && data.score >= 0 &&
+             data.lastUpdated is timestamp &&
+             (!('photoURL' in data) || data.photoURL is string || data.photoURL == null);
+    }
+
+    // ===============================================================
+    // Rules
+    // ===============================================================
+
+    match /users/{userId} {
+      allow read: if isAuthenticated();
+      allow create: if isOwner(userId) && isValidUser(request.resource.data);
+      allow update: if isOwner(userId) && isValidUser(request.resource.data) &&
+                    request.resource.data.uid == resource.data.uid &&
+                    request.resource.data.createdAt == resource.data.createdAt;
+      allow delete: if isAdmin();
+    }
+
+    match /subjects/{subjectId} {
+      allow read: if isAuthenticated();
+      allow write: if isAdmin();
+    }
+
+    match /questions/{questionId} {
+      allow read: if isAuthenticated();
+      allow write: if isAdmin();
+    }
+
+    match /results/{resultId} {
+      allow read: if isAuthenticated() && (resource.data.userId == request.auth.uid || isAdmin());
+      allow create: if isAuthenticated() && isValidResult(request.resource.data);
+      allow update, delete: if isAdmin();
+    }
+
+    match /leaderboards/{type}/rankings/{userId} {
+      allow read: if isAuthenticated();
+      allow create, update: if isOwner(userId) && isValidLeaderboardEntry(request.resource.data);
+      allow delete: if isAdmin();
+    }
+
+    // Default deny
+    match /{path=**} {
+      allow read, write: if false;
+    }
+  }
+}
